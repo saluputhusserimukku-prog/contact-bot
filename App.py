@@ -3,42 +3,48 @@ import pandas as pd
 
 st.set_page_config(page_title="Secure Contact Bot", layout="centered")
 
-# -------- SECURITY LOGIN --------
-PASSWORD = "police@123"   # change this
+# --------- ALLOWED PHONE NUMBERS ---------
+ALLOWED_NUMBERS = {
+    "9744244711",
+    "9496240520",
+}   # ← replace with real allowed numbers
 
+
+# --------- PHONE LOGIN ---------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title("🔐 Secure Contact Bot Login")
-    pw = st.text_input("Enter Password", type="password")
 
-    if st.button("Login"):
-        if pw == PASSWORD:
+    st.title("📱 Secure Contact Bot Login")
+
+    phone = st.text_input("Enter your registered mobile number")
+
+    if st.button("Verify"):
+        phone = phone.strip()
+
+        if phone in ALLOWED_NUMBERS:
             st.session_state.logged_in = True
+            st.session_state.user_phone = phone
+            st.success("Access granted")
             st.rerun()
         else:
-            st.error("Wrong password")
+            st.error("❌ Not authorized")
 
     st.stop()
+
 
 # -------- LOAD DATA --------
 @st.cache_data
 def load_data():
     df = pd.read_excel("contacts.xlsx")
     df.columns = df.columns.str.strip()
-
-    df["name_clean"] = df["Name"].astype(str).str.strip()
-    df["unit_clean"] = df["Unit"].astype(str).str.strip()
-    df["designation_clean"] = df["Designation"].astype(str).str.strip()
-
     return df
 
 df = load_data()
 
-st.title("📱 Officer Contact Lookup")
 
-# detect mobile column safely
+# -------- MOBILE COLUMN SAFE --------
 def get_mobile(row):
     for col in ["Mobile", "Phone", "Phone No", "Mobile No"]:
         if col in df.columns:
@@ -46,7 +52,9 @@ def get_mobile(row):
     return "Not Available"
 
 
-# -------- SEARCH MODE --------
+# -------- APP --------
+st.title("📞 Officer Contact Lookup")
+
 mode = st.radio(
     "Search Mode",
     ["Search by Name", "Search by Unit + Designation"],
@@ -57,7 +65,7 @@ mode = st.radio(
 if mode == "Search by Name":
 
     name = st.selectbox(
-        "Select Officer Name",
+        "Select Officer",
         sorted(df["Name"].unique())
     )
 
@@ -72,7 +80,7 @@ Mobile: {get_mobile(r)}
 """)
 
 
-# -------- UNIT + DESIGNATION DROPDOWNS --------
+# -------- UNIT + DESIGNATION --------
 else:
 
     unit = st.selectbox(
@@ -97,7 +105,11 @@ Designation: {r['Designation']}
 Mobile: {get_mobile(r)}
 """)
 
+
 # -------- LOGOUT --------
 if st.button("Logout"):
     st.session_state.logged_in = False
     st.rerun()
+
+
+st.caption("Authorized Mobile Access Only")
