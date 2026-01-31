@@ -1,77 +1,51 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Secure Contact Bot", layout="centered")
+st.set_page_config(page_title="Contact Bot", layout="centered")
 
-# --------- ALLOWED PHONE NUMBERS ---------
-ALLOWED_NUMBERS = {
-    "9744244711",
-    "9496240520",
-}   # ← replace with real allowed numbers
+# -------- Allowed Users (phone login) --------
+ALLOWED = {"9744244711", "9496240520"}  # change
 
+if "ok" not in st.session_state:
+    st.session_state.ok = False
 
-# --------- PHONE LOGIN ---------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if not st.session_state.logged_in:
-
-    st.title("📱 Secure Contact Bot Login")
-
-    phone = st.text_input("Enter your registered mobile number")
-
-    if st.button("Verify"):
-        phone = phone.strip()
-
-        if phone in ALLOWED_NUMBERS:
-            st.session_state.logged_in = True
-            st.session_state.user_phone = phone
-            st.success("Access granted")
+if not st.session_state.ok:
+    p = st.text_input("Enter authorized mobile number")
+    if st.button("Login"):
+        if p in ALLOWED:
+            st.session_state.ok = True
             st.rerun()
         else:
-            st.error("❌ Not authorized")
-
+            st.error("Not allowed")
     st.stop()
 
-
-# -------- LOAD DATA --------
+# -------- Load Excel --------
 @st.cache_data
-def load_data():
+def load():
     df = pd.read_excel("contacts.xlsx")
     df.columns = df.columns.str.strip()
     return df
 
-df = load_data()
+df = load()
 
+def get_mobile(r):
+    for c in ["Mobile","Phone","Phone No"]:
+        if c in df.columns:
+            return r[c]
+    return "NA"
 
-# -------- MOBILE COLUMN SAFE --------
-def get_mobile(row):
-    for col in ["Mobile", "Phone", "Phone No", "Mobile No"]:
-        if col in df.columns:
-            return row[col]
-    return "Not Available"
-
-
-# -------- APP --------
-st.title("📞 Officer Contact Lookup")
+st.title("📱 Contact Search Bot")
 
 mode = st.radio(
     "Search Mode",
-    ["Search by Name", "Search by Unit + Designation"],
+    ["By Name","By Unit + Designation"],
     horizontal=True
 )
 
-# -------- NAME DROPDOWN --------
-if mode == "Search by Name":
-
-    name = st.selectbox(
-        "Select Officer",
-        sorted(df["Name"].unique())
-    )
-
-    if st.button("Get Details"):
+if mode == "By Name":
+    name = st.selectbox("Select Name", sorted(df["Name"].unique()))
+    if st.button("Search"):
         r = df[df["Name"] == name].iloc[0]
-
         st.success(f"""
 Name: {r['Name']}
 Unit: {r['Unit']}
@@ -79,37 +53,15 @@ Designation: {r['Designation']}
 Mobile: {get_mobile(r)}
 """)
 
-
-# -------- UNIT + DESIGNATION --------
 else:
-
-    unit = st.selectbox(
-        "Select Unit",
-        sorted(df["Unit"].unique())
-    )
-
-    filtered = df[df["Unit"] == unit]
-
-    desig = st.selectbox(
-        "Select Designation",
-        sorted(filtered["Designation"].unique())
-    )
-
-    if st.button("Get Details"):
-        r = filtered[filtered["Designation"] == desig].iloc[0]
-
+    unit = st.selectbox("Unit", sorted(df["Unit"].unique()))
+    sub = df[df["Unit"] == unit]
+    des = st.selectbox("Designation", sorted(sub["Designation"].unique()))
+    if st.button("Search"):
+        r = sub[sub["Designation"] == des].iloc[0]
         st.success(f"""
 Name: {r['Name']}
 Unit: {r['Unit']}
 Designation: {r['Designation']}
 Mobile: {get_mobile(r)}
 """)
-
-
-# -------- LOGOUT --------
-if st.button("Logout"):
-    st.session_state.logged_in = False
-    st.rerun()
-
-
-st.caption("Authorized Mobile Access Only")
